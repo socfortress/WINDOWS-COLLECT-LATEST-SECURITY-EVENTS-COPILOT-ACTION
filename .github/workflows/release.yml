@@ -1,0 +1,99 @@
+name: Create PowerShell Script Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+      script_name:
+        description: 'PowerShell script name (without .ps1 extension)'
+        required: true
+        default: 'automation-template'
+
+env:
+  SCRIPT_NAME: ${{ github.event.inputs.script_name || 'automation-template' }}
+  VERSION: ${{ github.event.inputs.version || github.ref_name }}
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup PowerShell
+      shell: pwsh
+      run: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+        
+    - name: Validate PowerShell script
+      shell: pwsh
+      run: |
+        $scriptPath = "./${{ env.SCRIPT_NAME }}.ps1"
+        if (-not (Test-Path $scriptPath)) {
+          Write-Error "PowerShell script not found: $scriptPath"
+          exit 1
+        }
+        try {
+          $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content $scriptPath -Raw), [ref]$null)
+          Write-Host "✅ PowerShell script syntax is valid"
+        }
+        catch {
+          Write-Error "❌ PowerShell script syntax error: $($_.Exception.Message)"
+          exit 1
+        }
+        
+    - name: Create production scripts
+      shell: pwsh
+      run: .\scripts\build-release.ps1
+      
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ env.VERSION }}
+        name: ${{ env.SCRIPT_NAME }}-${{ env.VERSION }}
+        body: |
+          ## PowerShell Active Response Script Release
+          
+          ### ${{ env.SCRIPT_NAME }} ${{ env.VERSION }}
+          
+          Production-ready PowerShell script for active response automation.
+          
+          ### Quick Start
+          
+          **Automated Installation:**
+          ```powershell
+          Invoke-WebRequest -Uri "https://github.com/${{ github.repository }}/releases/download/${{ env.VERSION }}/install.ps1" -OutFile "install.ps1"
+          .\install.ps1
+          ```
+          
+          **Direct Download:**
+          ```powershell
+          Invoke-WebRequest -Uri "https://github.com/${{ github.repository }}/releases/download/${{ env.VERSION }}/${{ env.SCRIPT_NAME }}.ps1" -OutFile "${{ env.SCRIPT_NAME }}.ps1"
+          ```
+          
+          ### Files
+          - `${{ env.SCRIPT_NAME }}.ps1` - Main PowerShell script
+          - `${{ env.SCRIPT_NAME }}-${{ env.VERSION }}.ps1` - Versioned script
+          - `install.ps1` - Automated installer
+          - `checksums.txt` - File integrity checksums
+          - `README.md` - Detailed usage instructions
+          
+          ### Security
+          All files include SHA256 checksums for integrity verification.
+          
+          **Build Info:**
+          - Commit: ${{ github.sha }}
+          - Build Date: ${{ github.run_number }}
+          
+        files: |
+          release/*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

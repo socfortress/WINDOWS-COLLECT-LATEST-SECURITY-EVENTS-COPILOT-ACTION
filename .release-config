@@ -1,0 +1,32 @@
+# Release Configuration
+# This file contains configuration for automated releases
+
+# Default script name (should match the main .ps1 file in the root)
+SCRIPT_NAME="automation-template"
+
+# Release types
+# - patch: Bug fixes and minor updates (1.0.1)
+# - minor: New features, backward compatible (1.1.0)  
+# - major: Breaking changes (2.0.0)
+
+# Semantic versioning is used for all releases
+# Format: v{major}.{minor}.{patch}
+
+# Example tags for releases:
+# v1.0.0 - Initial release
+# v1.0.1 - Patch release
+# v1.1.0 - Minor release with new features
+# v2.0.0 - Major release with breaking changes
+
+# Release process:
+# 1. Update this file if needed
+# 2. Create a git tag: git tag v1.0.0
+# 3. Push the tag: git push origin v1.0.0
+# 4. GitHub Actions will automatically create the release
+
+# Manual release:
+# 1. Go to GitHub Actions tab
+# 2. Select "Create PowerShell Script Release" workflow
+# 3. Click "Run workflow"
+# 4. Enter version and script name
+# 5. Click "Run workflow"
