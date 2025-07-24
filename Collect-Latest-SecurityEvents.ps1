@@ -50,6 +50,17 @@ function Log-JSON {
 }
 
 Rotate-Log -Path $LogPath -MaxKB $LogMaxKB -Keep $LogKeep
+
+try {
+    if (Test-Path $ARLog) {
+        Remove-Item -Path $ARLog -Force -ErrorAction Stop
+    }
+    New-Item -Path $ARLog -ItemType File -Force | Out-Null
+    Write-Log INFO "Active response log cleared for fresh run."
+} catch {
+    Write-Log WARN "Failed to clear ${ARLog}: $($_.Exception.Message)"
+}
+
 $StartMsg = "=== SCRIPT START : Collect Latest Security Events (Last $HoursBack hrs) ==="
 Write-Log INFO $StartMsg
 Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] $StartMsg"
@@ -78,9 +89,9 @@ try {
     $Total = $allEvents.Count
     $SysmonCount = $sysmonEvents.Count
     Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] Collected $($securityEvents.Count) Security, $($defenderEvents.Count) Defender, $SysmonCount Sysmon events (total: $Total) from last $HoursBack hours." -ForegroundColor Cyan
-    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] JSON report appended to $ARLog" -ForegroundColor Gray
+    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] JSON report written to $ARLog" -ForegroundColor Gray
 
-    Write-Log INFO "Collected $($securityEvents.Count) Security, $($defenderEvents.Count) Defender, $SysmonCount Sysmon events (total $Total) from last $HoursBack hrs. JSON appended."
+    Write-Log INFO "Collected $($securityEvents.Count) Security, $($defenderEvents.Count) Defender, $SysmonCount Sysmon events (total $Total) from last $HoursBack hrs. JSON written."
 }
 catch {
     Write-Log ERROR "Failed to collect events: $_"
