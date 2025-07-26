@@ -16,6 +16,8 @@ $ErrorActionPreference = 'Stop'
 $HostName  = $env:COMPUTERNAME
 $LogMaxKB  = 100
 $LogKeep   = 5
+$MaxMessageLen = 500   # Max characters per event message
+$BatchSize = 50        # Write events in batches of 50
 
 $SecurityIDs  = @(4624,4625,4648,4672,4688)
 $DefenderIDs  = @(1116,1117,5007)
@@ -54,16 +56,32 @@ function Log-JSON {
     }
     $summaryObj | ConvertTo-Json -Compress | Out-File -FilePath $ARLog -Append -Encoding ascii -Width 2000
 
-    # Write each event as a JSON entry
+    # Process events in batches to avoid gRPC size issues
+    $batch = @()
     foreach ($evt in $Data) {
+        $msg = if ($evt.Message) {
+            if ($evt.Message.Length -gt $MaxMessageLen) {
+                $evt.Message.Substring(0, $MaxMessageLen) + "..."
+            } else { $evt.Message }
+        } else { "" }
+
         $eventObj = [pscustomobject]@{
             id        = $evt.Id
             source    = $evt.ProviderName
             time      = $evt.TimeCreated
             level     = $evt.LevelDisplayName
-            message   = $evt.Message
+            message   = $msg
         }
-        $eventObj | ConvertTo-Json -Compress | Out-File -FilePath $ARLog -Append -Encoding ascii -Width 2000
+        $batch += ($eventObj | ConvertTo-Json -Compress)
+
+        if ($batch.Count -ge $BatchSize) {
+            $batch -join "`n" | Out-File -FilePath $ARLog -Append -Encoding ascii -Width 2000
+            $batch = @()
+        }
+    }
+    # Flush remaining events
+    if ($batch.Count -gt 0) {
+        $batch -join "`n" | Out-File -FilePath $ARLog -Append -Encoding ascii -Width 2000
     }
 }
 
@@ -97,9 +115,9 @@ try {
     $Total = $allEvents.Count
     $SysmonCount = $sysmonEvents.Count
     Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] Collected $($securityEvents.Count) Security, $($defenderEvents.Count) Defender, $SysmonCount Sysmon events (total: $Total) from last $HoursBack hours." -ForegroundColor Cyan
-    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] JSON report appended to $ARLog" -ForegroundColor Gray
+    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] JSON report batched and appended to $ARLog" -ForegroundColor Gray
 
-    Write-Log INFO "Collected $($securityEvents.Count) Security, $($defenderEvents.Count) Defender, $SysmonCount Sysmon events (total $Total) from last $HoursBack hrs. JSON appended."
+    Write-Log INFO "Collected $($securityEvents.Count) Security, $($defenderEvents.Count) Defender, $SysmonCount Sysmon events (total $Total) from last $HoursBack hrs. JSON batched and appended."
 }
 catch {
     Write-Log ERROR "Failed to collect events: $_"
