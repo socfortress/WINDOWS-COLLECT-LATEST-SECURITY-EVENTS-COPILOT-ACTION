@@ -6,6 +6,10 @@ param (
     [switch]$IncludeSysmon
 )
 
+# Map Velociraptor arguments if passed
+if ($Arg1) { $HoursBack = [int]$Arg1 }
+if ($Arg2 -and ($Arg2 -eq "true" -or $Arg2 -eq "1")) { $IncludeSysmon = $true }
+
 $ErrorActionPreference = 'Stop'
 $HostName  = $env:COMPUTERNAME
 $LogMaxKB  = 100
@@ -46,20 +50,11 @@ function Log-JSON {
         total_events    = $Data.Count
         data            = $Data
     } | ConvertTo-Json -Depth 5 -Compress
+    # Append to central log instead of overwriting
     Add-Content -Path $ARLog -Value $Entry
 }
 
 Rotate-Log -Path $LogPath -MaxKB $LogMaxKB -Keep $LogKeep
-
-try {
-    if (Test-Path $ARLog) {
-        Remove-Item -Path $ARLog -Force -ErrorAction Stop
-    }
-    New-Item -Path $ARLog -ItemType File -Force | Out-Null
-    Write-Log INFO "Active response log cleared for fresh run."
-} catch {
-    Write-Log WARN "Failed to clear ${ARLog}: $($_.Exception.Message)"
-}
 
 $StartMsg = "=== SCRIPT START : Collect Latest Security Events (Last $HoursBack hrs) ==="
 Write-Log INFO $StartMsg
@@ -67,7 +62,7 @@ Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] $StartMsg"
 
 try {
     $since = (Get-Date).AddHours(-$HoursBack)
-    Write-Log INFO "Collecting events since $since (filtered IDs, Sysmon=$IncludeSysmon)..."
+    Write-Log INFO "Collecting events since $since (Sysmon=$IncludeSysmon)..."
     Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] Collecting events since $since ..."
 
     $securityEvents = Get-WinEvent -FilterHashtable @{LogName='Security'; StartTime=$since; Id=$SecurityIDs} -ErrorAction SilentlyContinue |
@@ -89,9 +84,9 @@ try {
     $Total = $allEvents.Count
     $SysmonCount = $sysmonEvents.Count
     Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] Collected $($securityEvents.Count) Security, $($defenderEvents.Count) Defender, $SysmonCount Sysmon events (total: $Total) from last $HoursBack hours." -ForegroundColor Cyan
-    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] JSON report written to $ARLog" -ForegroundColor Gray
+    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] JSON report appended to $ARLog" -ForegroundColor Gray
 
-    Write-Log INFO "Collected $($securityEvents.Count) Security, $($defenderEvents.Count) Defender, $SysmonCount Sysmon events (total $Total) from last $HoursBack hrs. JSON written."
+    Write-Log INFO "Collected $($securityEvents.Count) Security, $($defenderEvents.Count) Defender, $SysmonCount Sysmon events (total $Total) from last $HoursBack hrs. JSON appended."
 }
 catch {
     Write-Log ERROR "Failed to collect events: $_"
