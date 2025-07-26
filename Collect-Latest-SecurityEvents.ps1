@@ -57,7 +57,7 @@ function Safe-Append {
 
 function Log-JSON {
     param ($Data)
-    # Log summary first
+    # Write summary entry first
     $Summary = @{
         timestamp       = (Get-Date).ToString('o')
         hostname        = $HostName
@@ -67,9 +67,16 @@ function Log-JSON {
     } | ConvertTo-Json -Compress
     Safe-Append -Content $Summary
 
-    # Log events in smaller chunks to avoid file locks
+    # Write each event as a separate JSON object
     foreach ($evt in $Data) {
-        $line = $evt | ConvertTo-Json -Compress
+        $eventObj = [pscustomobject]@{
+            id        = $evt.Id
+            source    = $evt.ProviderName
+            time      = $evt.TimeCreated
+            level     = $evt.LevelDisplayName
+            message   = $evt.Message
+        }
+        $line = $eventObj | ConvertTo-Json -Compress
         Safe-Append -Content $line
     }
 }
