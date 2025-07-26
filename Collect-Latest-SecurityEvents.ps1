@@ -42,32 +42,19 @@ function Write-Log {
     Add-Content -Path $LogPath -Value "[$Timestamp][$Level] $Message"
 }
 
-function Safe-Append {
-    param ([string]$Content)
-    for ($i = 0; $i -lt 3; $i++) {
-        try {
-            Add-Content -Path $ARLog -Value $Content
-            break
-        } catch {
-            Start-Sleep -Milliseconds 200
-            if ($i -eq 2) { Write-Log ERROR "Failed to write to $ARLog after 3 tries: $_" }
-        }
-    }
-}
-
 function Log-JSON {
     param ($Data)
-    # Write summary entry first
-    $Summary = @{
+    # Write summary first
+    $summaryObj = [pscustomobject]@{
         timestamp       = (Get-Date).ToString('o')
-        hostname        = $HostName
-        type            = 'latest_security_events'
+        host            = $HostName
+        action          = 'collect_security_events'
         hours_collected = $HoursBack
         total_events    = $Data.Count
-    } | ConvertTo-Json -Compress
-    Safe-Append -Content $Summary
+    }
+    $summaryObj | ConvertTo-Json -Compress | Out-File -FilePath $ARLog -Append -Encoding ascii -Width 2000
 
-    # Write each event as a separate JSON object
+    # Write each event as a JSON entry
     foreach ($evt in $Data) {
         $eventObj = [pscustomobject]@{
             id        = $evt.Id
@@ -76,8 +63,7 @@ function Log-JSON {
             level     = $evt.LevelDisplayName
             message   = $evt.Message
         }
-        $line = $eventObj | ConvertTo-Json -Compress
-        Safe-Append -Content $line
+        $eventObj | ConvertTo-Json -Compress | Out-File -FilePath $ARLog -Append -Encoding ascii -Width 2000
     }
 }
 
