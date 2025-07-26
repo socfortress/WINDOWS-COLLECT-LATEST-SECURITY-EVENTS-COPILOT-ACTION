@@ -6,7 +6,7 @@ param (
     [string]$ARLog   = 'C:\Program Files (x86)\ossec-agent\active-response\active-responses.log'
 )
 
-# Map Velociraptor arguments (simple pattern, no extra parsing)
+# Map Velociraptor arguments (consistent pattern)
 if ($Arg1 -and -not $HoursBack) { $HoursBack = [int]$Arg1 }
 if ($Arg2 -and -not $IncludeSysmon) {
     if ($Arg2 -eq "true" -or $Arg2 -eq "1") { $IncludeSysmon = $true }
@@ -52,7 +52,8 @@ function Log-JSON {
         total_events    = $Data.Count
         data            = $Data
     } | ConvertTo-Json -Depth 5 -Compress
-    # Append JSON to the central log (no overwrite)
+
+    # Always append — never recreate the log file
     Add-Content -Path $ARLog -Value $Entry
 }
 
