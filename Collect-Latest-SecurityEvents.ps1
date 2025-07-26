@@ -1,14 +1,16 @@
 [CmdletBinding()]
 param (
-    [string]$LogPath = "$env:TEMP\Collect-Latest-SecurityEvents.log",
-    [string]$ARLog   = 'C:\Program Files (x86)\ossec-agent\active-response\active-responses.log',
     [int]$HoursBack = 24,
-    [switch]$IncludeSysmon
+    [switch]$IncludeSysmon,
+    [string]$LogPath = "$env:TEMP\Collect-Latest-SecurityEvents.log",
+    [string]$ARLog   = 'C:\Program Files (x86)\ossec-agent\active-response\active-responses.log'
 )
 
-# Map Velociraptor arguments if passed
-if ($Arg1) { $HoursBack = [int]$Arg1 }
-if ($Arg2 -and ($Arg2 -eq "true" -or $Arg2 -eq "1")) { $IncludeSysmon = $true }
+# Map Velociraptor arguments (simple pattern, no extra parsing)
+if ($Arg1 -and -not $HoursBack) { $HoursBack = [int]$Arg1 }
+if ($Arg2 -and -not $IncludeSysmon) {
+    if ($Arg2 -eq "true" -or $Arg2 -eq "1") { $IncludeSysmon = $true }
+}
 
 $ErrorActionPreference = 'Stop'
 $HostName  = $env:COMPUTERNAME
@@ -50,7 +52,7 @@ function Log-JSON {
         total_events    = $Data.Count
         data            = $Data
     } | ConvertTo-Json -Depth 5 -Compress
-    # Append to central log instead of overwriting
+    # Append JSON to the central log (no overwrite)
     Add-Content -Path $ARLog -Value $Entry
 }
 
