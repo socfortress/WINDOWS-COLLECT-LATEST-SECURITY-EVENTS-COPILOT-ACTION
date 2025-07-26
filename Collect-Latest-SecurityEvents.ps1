@@ -6,7 +6,7 @@ param (
     [string]$ARLog   = 'C:\Program Files (x86)\ossec-agent\active-response\active-responses.log'
 )
 
-# Map Velociraptor arguments (consistent pattern)
+# Map Velociraptor arguments
 if ($Arg1 -and -not $HoursBack) { $HoursBack = [int]$Arg1 }
 if ($Arg2 -and -not $IncludeSysmon) {
     if ($Arg2 -eq "true" -or $Arg2 -eq "1") { $IncludeSysmon = $true }
@@ -42,19 +42,36 @@ function Write-Log {
     Add-Content -Path $LogPath -Value "[$Timestamp][$Level] $Message"
 }
 
+function Safe-Append {
+    param ([string]$Content)
+    for ($i = 0; $i -lt 3; $i++) {
+        try {
+            Add-Content -Path $ARLog -Value $Content
+            break
+        } catch {
+            Start-Sleep -Milliseconds 200
+            if ($i -eq 2) { Write-Log ERROR "Failed to write to $ARLog after 3 tries: $_" }
+        }
+    }
+}
+
 function Log-JSON {
     param ($Data)
-    $Entry = @{
+    # Log summary first
+    $Summary = @{
         timestamp       = (Get-Date).ToString('o')
         hostname        = $HostName
         type            = 'latest_security_events'
         hours_collected = $HoursBack
         total_events    = $Data.Count
-        data            = $Data
-    } | ConvertTo-Json -Depth 5 -Compress
+    } | ConvertTo-Json -Compress
+    Safe-Append -Content $Summary
 
-    # Always append — never recreate the log file
-    Add-Content -Path $ARLog -Value $Entry
+    # Log events in smaller chunks to avoid file locks
+    foreach ($evt in $Data) {
+        $line = $evt | ConvertTo-Json -Compress
+        Safe-Append -Content $line
+    }
 }
 
 Rotate-Log -Path $LogPath -MaxKB $LogMaxKB -Keep $LogKeep
