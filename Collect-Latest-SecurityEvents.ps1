@@ -5,8 +5,6 @@ param (
     [string]$LogPath = "$env:TEMP\Collect-Latest-SecurityEvents.log",
     [string]$ARLog   = 'C:\Program Files (x86)\ossec-agent\active-response\active-responses.log'
 )
-
-# Map Velociraptor arguments
 if ($Arg1 -and -not $HoursBack) { $HoursBack = [int]$Arg1 }
 if ($Arg2 -and -not $IncludeSysmon) {
     if ($Arg2 -eq "true" -or $Arg2 -eq "1") { $IncludeSysmon = $true }
@@ -16,8 +14,8 @@ $ErrorActionPreference = 'Stop'
 $HostName  = $env:COMPUTERNAME
 $LogMaxKB  = 100
 $LogKeep   = 5
-$MaxMessageLen = 500   # Max characters per event message
-$BatchSize = 50        # Write events in batches of 50
+$MaxMessageLen = 500
+$BatchSize = 50
 
 $SecurityIDs  = @(4624,4625,4648,4672,4688)
 $DefenderIDs  = @(1116,1117,5007)
@@ -44,21 +42,20 @@ function Write-Log {
     Add-Content -Path $LogPath -Value "[$Timestamp][$Level] $Message"
 }
 
-function Log-JSON {
-    param ($Data)
-    # Write summary first
+function Build-JSONReport {
+    param ($Events)
     $summaryObj = [pscustomobject]@{
         timestamp       = (Get-Date).ToString('o')
         host            = $HostName
         action          = 'collect_security_events'
         hours_collected = $HoursBack
-        total_events    = $Data.Count
+        total_events    = $Events.Count
     }
-    $summaryObj | ConvertTo-Json -Compress | Out-File -FilePath $ARLog -Append -Encoding ascii -Width 2000
 
-    # Process events in batches to avoid gRPC size issues
-    $batch = @()
-    foreach ($evt in $Data) {
+    $jsonLines = @()
+    $jsonLines += ($summaryObj | ConvertTo-Json -Compress)
+
+    foreach ($evt in $Events) {
         $msg = if ($evt.Message) {
             if ($evt.Message.Length -gt $MaxMessageLen) {
                 $evt.Message.Substring(0, $MaxMessageLen) + "..."
@@ -72,17 +69,10 @@ function Log-JSON {
             level     = $evt.LevelDisplayName
             message   = $msg
         }
-        $batch += ($eventObj | ConvertTo-Json -Compress)
+        $jsonLines += ($eventObj | ConvertTo-Json -Compress)
+    }
 
-        if ($batch.Count -ge $BatchSize) {
-            $batch -join "`n" | Out-File -FilePath $ARLog -Append -Encoding ascii -Width 2000
-            $batch = @()
-        }
-    }
-    # Flush remaining events
-    if ($batch.Count -gt 0) {
-        $batch -join "`n" | Out-File -FilePath $ARLog -Append -Encoding ascii -Width 2000
-    }
+    return $jsonLines -join "`n"
 }
 
 Rotate-Log -Path $LogPath -MaxKB $LogMaxKB -Keep $LogKeep
@@ -109,19 +99,35 @@ try {
     }
 
     $allEvents = $securityEvents + $defenderEvents + $sysmonEvents
-
-    Log-JSON -Data $allEvents
+    $jsonReport = Build-JSONReport -Events $allEvents
+    $tempFile = "$env:TEMP\arlog.tmp"
+    Set-Content -Path $tempFile -Value $jsonReport -Encoding ascii -Force
+    try {
+        Move-Item -Path $tempFile -Destination $ARLog -Force
+        Write-Log INFO "Log file replaced at $ARLog"
+    } catch {
+        Move-Item -Path $tempFile -Destination "$ARLog.new" -Force
+        Write-Log WARN "Log locked, wrote results to $ARLog.new"
+    }
 
     $Total = $allEvents.Count
     $SysmonCount = $sysmonEvents.Count
     Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] Collected $($securityEvents.Count) Security, $($defenderEvents.Count) Defender, $SysmonCount Sysmon events (total: $Total) from last $HoursBack hours." -ForegroundColor Cyan
-    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] JSON report batched and appended to $ARLog" -ForegroundColor Gray
-
-    Write-Log INFO "Collected $($securityEvents.Count) Security, $($defenderEvents.Count) Defender, $SysmonCount Sysmon events (total $Total) from last $HoursBack hrs. JSON batched and appended."
 }
 catch {
     Write-Log ERROR "Failed to collect events: $_"
-    Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][ERROR] Failed to collect events. See $LogPath for details." -ForegroundColor Red
+
+    $errorObj = [pscustomobject]@{
+        timestamp = (Get-Date).ToString('o')
+        host      = $HostName
+        action    = 'collect_security_events'
+        status    = 'error'
+        error     = $_.Exception.Message
+    }
+    $json = $errorObj | ConvertTo-Json -Compress
+    $fallback = "$ARLog.new"
+    Set-Content -Path $fallback -Value $json -Encoding ascii -Force
+    Write-Log WARN "Error logged to $fallback"
 }
 
 $EndMsg = "=== SCRIPT END : Collect Latest Security Events ==="
