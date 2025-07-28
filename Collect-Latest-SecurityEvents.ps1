@@ -123,6 +123,7 @@ catch {
         action    = 'collect_security_events'
         status    = 'error'
         error     = $_.Exception.Message
+        copilot_soar = $true
     }
     $json = $errorObj | ConvertTo-Json -Compress
     $fallback = "$ARLog.new"
