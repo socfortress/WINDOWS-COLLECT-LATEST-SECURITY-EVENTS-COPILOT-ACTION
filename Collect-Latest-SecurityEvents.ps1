@@ -50,6 +50,7 @@ function Build-JSONReport {
         action          = 'collect_security_events'
         hours_collected = $HoursBack
         total_events    = $Events.Count
+        copilot_action = $true
     }
 
     $jsonLines = @()
@@ -123,7 +124,7 @@ catch {
         action    = 'collect_security_events'
         status    = 'error'
         error     = $_.Exception.Message
-        copilot_soar = $true
+        copilot_action = $true
     }
     $json = $errorObj | ConvertTo-Json -Compress
     $fallback = "$ARLog.new"
@@ -134,3 +135,4 @@ catch {
 $EndMsg = "=== SCRIPT END : Collect Latest Security Events ==="
 Write-Log INFO $EndMsg
 Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')][INFO] $EndMsg"
+
