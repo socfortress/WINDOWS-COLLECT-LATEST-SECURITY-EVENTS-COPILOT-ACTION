@@ -1,0 +1,40 @@
+{
+  "active_response_name": "WINDOWS-COLLECT-LATEST-SECURITY-EVENTS-ACTIVERESPONSE",
+  "description": "Collects the latest Windows Security, Defender, and optional Sysmon events from the past specified hours. Produces NDJSON output summarizing event counts and providing detailed per-event entries. Uses atomic logging with fallback handling.",
+  "technology": "Windows",
+  "icon": "windows",
+  "script_parameters": [
+    {
+      "name": "HoursBack",
+      "type": "integer",
+      "required": false,
+      "description": "Number of hours back from the current time to collect events.",
+      "default": 24
+    },
+    {
+      "name": "IncludeSysmon",
+      "type": "boolean",
+      "required": false,
+      "description": "Include Sysmon logs if available.",
+      "default": false
+    },
+    {
+      "name": "LogPath",
+      "type": "string",
+      "required": false,
+      "description": "Path to the rotating human-readable script log.",
+      "default": "%TEMP%/Collect-Latest-SecurityEvents.log"
+    },
+    {
+      "name": "ARLog",
+      "type": "string",
+      "required": false,
+      "description": "Active Response NDJSON output path (atomic overwrite; falls back to .new if locked).",
+      "default": "C:\\Program Files (x86)\\ossec-agent\\active-response\\active-responses.log"
+    }
+  ],
+  "repo_url": "https://github.com/socfortress/WINDOWS-COLLECT-LATEST-SECURITY-EVENTS-ACTIVERESPONSE",
+  "script_name": "Collect-Latest-SecurityEvents.ps1",
+  "version": "1.0.0",
+  "last_updated": "2025-08-22T00:00:00Z"
+}
