@@ -1,5 +1,5 @@
 {
-  "active_response_name": "WINDOWS-COLLECT-LATEST-SECURITY-EVENTS-ACTIVERESPONSE",
+  "copilot_action_name": "WINDOWS-COLLECT-LATEST-SECURITY-EVENTS-ACTIVERESPONSE",
   "description": "Collects the latest Windows Security, Defender, and optional Sysmon events from the past specified hours. Produces NDJSON output summarizing event counts and providing detailed per-event entries. Uses atomic logging with fallback handling.",
   "technology": "Windows",
   "icon": "windows",
