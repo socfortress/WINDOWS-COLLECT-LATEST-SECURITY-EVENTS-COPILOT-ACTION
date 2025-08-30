@@ -33,7 +33,7 @@
       "default": "C:\\Program Files (x86)\\ossec-agent\\active-response\\active-responses.log"
     }
   ],
-  "repo_url": "https://github.com/socfortress/WINDOWS-COLLECT-LATEST-SECURITY-EVENTS-ACTIVERESPONSE",
+  "repo_url": "https://raw.githubusercontent.com/socfortress/WINDOWS-COLLECT-LATEST-SECURITY-EVENTS-COPILOT-ACTION/refs/heads/main/",
   "script_name": "Collect-Latest-SecurityEvents.ps1",
   "version": "1.0.0",
   "last_updated": "2025-08-22T00:00:00Z"
