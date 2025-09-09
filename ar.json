@@ -1,6 +1,6 @@
 {
   "copilot_action_name": "WINDOWS-COLLECT-LATEST-SECURITY-EVENTS-COPILOT-ACTION",
-  "description": "Collects the latest Windows Security, Defender, and optional Sysmon events from the past specified hours. Produces NDJSON output summarizing event counts and providing detailed per-event entries. Uses atomic logging with fallback handling.",
+  "description": "Collects recent Windows Security and Defender events, with optional Sysmon, over a configurable lookback window. Emits NDJSON with verification, per-event entries, and a run summary. Defaults: HoursBack = 24, IncludeSysmon = false.",
   "technology": "Windows",
   "icon": "windows",
   "script_parameters": [
@@ -8,34 +8,19 @@
       "name": "HoursBack",
       "type": "integer",
       "required": false,
-      "description": "Number of hours back from the current time to collect events.",
-      "default": 24,
-      "arg_position" : "1"
+      "description": "Number of hours to look back when collecting events. Default is 24.",
+      "arg_position": "1"
     },
     {
       "name": "IncludeSysmon",
       "type": "boolean",
       "required": false,
-      "description": "Include Sysmon logs if available.",
-      "default": false
-    },
-    {
-      "name": "LogPath",
-      "type": "string",
-      "required": false,
-      "description": "Path to the rotating human-readable script log.",
-      "default": "%TEMP%/Collect-Latest-SecurityEvents.log"
-    },
-    {
-      "name": "ARLog",
-      "type": "string",
-      "required": false,
-      "description": "Active Response NDJSON output path (atomic overwrite; falls back to .new if locked).",
-      "default": "C:\\Program Files (x86)\\ossec-agent\\active-response\\active-responses.log"
+      "description": "Include Sysmon channel if available (set to true/1 to enable). Default is false.",
+      "arg_position": "2"
     }
   ],
-  "repo_url": "https://raw.githubusercontent.com/socfortress/WINDOWS-COLLECT-LATEST-SECURITY-EVENTS-COPILOT-ACTION/refs/heads/main",
+  "repo_url": "https://raw.githubusercontent.com/socfortress/WINDOWS-COLLECT-LATEST-SECURITY-EVENTS-COPILOT-ACTION/refs/heads/main/Collect-Latest-SecurityEvents.ps1",
   "script_name": "Collect-Latest-SecurityEvents.ps1",
   "version": "1.0.0",
-  "last_updated": "2025-08-22T00:00:00Z"
+  "last_updated": "2025-09-09T00:00:00Z"
 }
